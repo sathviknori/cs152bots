@@ -9,7 +9,6 @@ import re
 import requests
 from report import Report
 import pdb
-import numpy
 
 # Set up logging to the console
 logger = logging.getLogger('discord')
@@ -18,15 +17,17 @@ handler = logging.FileHandler(filename='discord.log', encoding='utf-8', mode='w'
 handler.setFormatter(logging.Formatter('%(asctime)s:%(levelname)s:%(name)s: %(message)s'))
 logger.addHandler(handler)
 
-# There should be a file called 'tokens.json' inside the same folder as this file
-token_path = 'tokens.json'
-if not os.path.isfile(token_path):
-    raise Exception(f"{token_path} not found!")
-with open(token_path) as f:
-    # If you get an error here, it means your token is formatted incorrectly. Did you put it in quotes?
-    tokens = json.load(f)
-    discord_token = tokens['discord']
+# # There should be a file called 'tokens.json' inside the same folder as this file
+# token_path = 'tokens.json'
+# if not os.path.isfile(token_path):
+#     raise Exception(f"{token_path} not found!")
+# with open(token_path) as f:
+#     # If you get an error here, it means your token is formatted incorrectly. Did you put it in quotes?
+#     tokens = json.load(f)
+#     discord_token = tokens['discord']
 
+# Load the discord token from environment variable
+discord_token = os.getenv('DISCORD_TOKEN')
 
 class ModBot(discord.Client):
     def __init__(self):
