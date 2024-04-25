@@ -108,7 +108,7 @@ class ModBot(discord.Client):
 
         # Forward the message to the mod channel
         mod_channel = self.mod_channels[message.guild.id]
-        await mod_channel.send(f'Forwarded message [TEST CHANGE 2]:\n{message.author.name}: "{message.content}"')
+        await mod_channel.send(f'Forwarded message [TEST CHANGE 3]:\n{message.author.name}: "{message.content}"')
         scores = self.eval_text(message.content)
         await mod_channel.send(self.code_format(scores))
 
