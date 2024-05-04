@@ -9,6 +9,8 @@ class State(Enum):
     REPORT_COMPLETE = auto()
     SPAM = auto()
     DANGER = auto()
+    OFFENSIVE = auto()
+    HARRASMENT = auto()
 
 
 class Report:
@@ -20,6 +22,7 @@ class Report:
         self.state = State.REPORT_START
         self.client = client
         self.message = None
+        self.data = {}
     
     async def handle_message(self, message):
         '''
@@ -59,17 +62,28 @@ class Report:
             # Here we've found the message - it's up to you to decide what to do next!
             self.state = State.MESSAGE_IDENTIFIED
             return ["I found this message:", "```" + message.author.name + ": " + message.content + "```", \
-                    "Please select a category of abuse (enter number): \n(1) Spam/Fraud\n (2) Offensive Content\n (3) Bullying/Harassment\n (4) Promoting Violence"]
+                    "Please select a category of abuse (enter number): \n(1) Spam/Fraud\n (2) Offensive Content\n (3) Bullying/Harassment\n (4) Violent/Dangerous"]
         
         
         if self.state == State.MESSAGE_IDENTIFIED:
             if re.search('1', message.content):
                 self.state = State.SPAM
                 return ["Ok thank you for reporting Spam a moderator will take a look"]
-            else:
-                return ["other"]
+            if re.search('2', message.content):
+                self.state = State.OFFENSIVE
+                reply ="Please select type of offensive content: \n"
+                reply += '(1) Dehumanizing/derogatory remarks \n (2)  Sexual Content \n (3) Violence \n (4) Hate Speech \n (5) Animal abuse/torture'
+                return [reply]
+            if re.search('3', message.content):
+                self.state = State.HARRASMENT
+                reply ="Please select type of harrasment: \n"
+                reply += '(1) sexual harrasment \n (2) targeted harrasment against protected class \n (3) repeated bullying'
+                return [reply]
+            if re.search('4', message.content):
+                self.state = State.DANGER
+                return ["Please specify what type of danger/violence you are reporting: \n(1) threats to safety\n(2) Encouragement of self-harm or suicideal ideation"]
 
-        return []
+        return ["error try again"]
 
     def report_complete(self):
         return self.state == State.REPORT_COMPLETE
