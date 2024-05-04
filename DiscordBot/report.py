@@ -7,6 +7,9 @@ class State(Enum):
     AWAITING_MESSAGE = auto()
     MESSAGE_IDENTIFIED = auto()
     REPORT_COMPLETE = auto()
+    SPAM = auto()
+    DANGER = auto()
+
 
 class Report:
     START_KEYWORD = "report"
@@ -56,10 +59,15 @@ class Report:
             # Here we've found the message - it's up to you to decide what to do next!
             self.state = State.MESSAGE_IDENTIFIED
             return ["I found this message:", "```" + message.author.name + ": " + message.content + "```", \
-                    "This is all I know how to do right now - it's up to you to build out the rest of my reporting flow!"]
+                    "Please select a category of abuse (enter number): \n(1) Spam/Fraud\n (2) Offensive Content\n (3) Bullying/Harassment\n (4) Promoting Violence"]
+        
         
         if self.state == State.MESSAGE_IDENTIFIED:
-            return ["<insert rest of reporting flow here>"]
+            if re.search('1', message.content):
+                self.state = State.SPAM
+                return ["Ok thank you for reporting Spam a moderator will take a look"]
+            else:
+                return ["other"]
 
         return []
 
