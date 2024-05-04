@@ -8,6 +8,7 @@ import logging
 import re
 import requests
 from report import Report
+from review import Review
 import pdb
 
 # Set up logging to the console
@@ -37,6 +38,7 @@ class ModBot(discord.Client):
         self.group_num = None
         self.mod_channels = {} # Map from guild to the mod channel id for that guild
         self.reports = {} # Map from user IDs to the state of their report
+        self.reviews = {} # Map from user IDs to the state of their review
 
     async def on_ready(self):
         print(f'{self.user.name} has connected to Discord! It is these guilds:')
@@ -93,7 +95,7 @@ class ModBot(discord.Client):
             self.reports[author_id] = Report(self)
 
         # Let the report class handle this message; forward all the messages it returns to uss
-        responses = await self.reports[author_id].handle_message(message)
+        responses = await self.reports[author_id].handle_message(message, self.mod_channels)
         for r in responses:
             await message.channel.send(r)
 
@@ -103,15 +105,40 @@ class ModBot(discord.Client):
 
     async def handle_channel_message(self, message):
         # Only handle messages sent in the "group-#" channel
+        if message.channel.name == f'group-{self.group_num}-mod':
+            if message.content == Review.HELP_KEYWORD:
+                reply =  "Use the `review` command to begin the reporting process.\n"
+                reply += "Use the `cancel` command to cancel the report process.\n"
+                await message.channel.send(reply)
+            
+            author_id = message.author.id
+            responses = []
+
+            # Only respond to messages if they're part of a review flow
+            if author_id not in self.reviews and not message.content.startswith(Review.START_KEYWORD):
+                return
+
+            # If we don't currently have an active review for this user, add one
+            if author_id not in self.reviews:
+                self.reviews[author_id] = Review(self)
+            
+            # Let the review class handle this message; forward all the messages it returns to us
+            responses = await self.reviews[author_id].handle_channel_message(message)
+            for r in responses:
+                await message.channel.send(r)
+            
+            # If the review is complete or cancelled, remove it from our map
+            if self.reviews[author_id].review_complete():
+                self.reviews.pop(author_id)
+
         if not message.channel.name == f'group-{self.group_num}':
             return
 
         # Forward the message to the mod channel
         mod_channel = self.mod_channels[message.guild.id]
-        await mod_channel.send(f'Forwarded message [TEST CHANGE 4]:\n{message.author.name}: "{message.content}"')
+        await mod_channel.send(f'Forwarded message:\n{message.author.name}: "{message.content}"')
         scores = self.eval_text(message.content)
         await mod_channel.send(self.code_format(scores))
-
 
     def eval_text(self, message):
         ''''
