@@ -11,6 +11,8 @@ class State(Enum):
     FINAL_ACTIONS = auto()
     REPORT_LINK = auto()
     SEVERITY = auto()
+    ADVERSARIAL_REPORTING = auto()
+    COORDINATED_HARASSMENT = auto()
 
     
 
@@ -66,14 +68,33 @@ class Review:
                     self.state = State.SEVERITY
                     return ["Please determine the severity of the abuse:\n (1) Mild \n (2) Moderate \n (3) Severe"]
                 else:
-                    reporting_user_id = self.review_data["authorId"]
-                    reporting_user = await self.client.fetch_user(reporting_user_id)
-                    await reporting_user.send("Your report has been reviewed. Unfortunately, no action has been taken. We appreciate your vigilance and suggest you block the user if you feel unsafe. If you have any further concerns, please let us know.")
-                    self.state = State.REVIEW_COMPLETE
-                    return ["Review complete."]
+                    self.state = State.ADVERSARIAL_REPORTING
+                    return ["Is this adversarial reporting?\n(1) Yes \n(2) No"]
+                    # reporting_user_id = self.review_data["authorId"]
+                    # reporting_user = await self.client.fetch_user(reporting_user_id)
+                    # await reporting_user.send("Your report has been reviewed. Unfortunately, no action has been taken. We appreciate your vigilance and suggest you block the user if you feel unsafe. If you have any further concerns, please let us know.")
+                    # self.state = State.REVIEW_COMPLETE
+                    # return ["Review complete."]
             else:
                 return ["Invalid selection. Please select a valid option."]
-            
+        
+
+        if self.state == State.ADVERSARIAL_REPORTING:
+            if message.content == "1":
+                reporting_user_id = self.review_data["authorId"]
+                reporting_user = await self.client.fetch_user(reporting_user_id)
+                await reporting_user.send("You have been banned due to adversarial reporting.")
+                self.state = State.REVIEW_COMPLETE
+                return ["The reporting user has been notified of the ban."]
+            elif message.content == "2":
+                reporting_user_id = self.review_data["authorId"]
+                reporting_user = await self.client.fetch_user(reporting_user_id)
+                await reporting_user.send("Your report has been reviewed. Unfortunately, no action has been taken. We appreciate your vigilance and suggest you block the user if you feel unsafe. If you have any further concerns, please let us know.")
+                self.state = State.REVIEW_COMPLETE
+                return ["Review complete."]
+            else:
+                return ["Invalid selection. Please select a valid option."]
+
         if self.state == State.SEVERITY:
             if message.content in ["1", "2", "3"]:
                 reporting_user_id = self.review_data["authorId"]

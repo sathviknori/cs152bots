@@ -10,12 +10,19 @@ class State(Enum):
     SPAM = auto()
     DANGER = auto()
     OFFENSIVE = auto()
-    HARRASMENT = auto()
+    HARASSMENT = auto()
     ADDITIONAL_INFO = auto()
     ANIMAL_ABUSE = auto()
     TARGET = auto()
     USER = auto()
+    SOMETHING_ELSE =  auto()
+    PRIVATE_INFO = auto()
+    MISINFORMATION = auto()
     FINAL_ACTIONS = auto()
+    OTHER_DESCRIPTION = auto()
+    MINOR_SEXUAL_BEHAVIOR = auto()
+    SEXUAL_CONTENT_SUBTYPE = auto()
+
 
 offense = {
     "1": "Dehumanizing/derogatory remarks",
@@ -25,15 +32,23 @@ offense = {
     "5": "Animal abuse/torture"
 }
 
-harrassment = {
-    "1": "sexual harrasment",
-    "2": "targeted harrasment against protected class",
-    "3": "repeated bullying"
+harassment = {
+    "1": "Promoting hate based on identity or vulnerability",  
+    "2": "Celebrating or glorifying acts of violence", 
+    "3": "Using rude, vulgar or offensive language",  
+    "4": "Bullying",
+    "5": "Sexual harassment"
 }
 
 danger = {
     "1": "threats to safety",
     "2": "Encouragement of self-harm or suicidal ideation"
+}
+
+
+misinformation = {
+    "1": "Spreading fake news or harmful conspiracy theories",
+    "2": "Impersonation"
 }
 
 animal_abuse = {
@@ -47,6 +62,14 @@ suggested_actions = {
     "2": "Warn User",
     "3": "Ban User"
 }
+
+minor_sexual_behavior_options = {
+    "1": "This person is sending inappropriate sexual messages or discussing minors sexually",
+    "2": "A minor is posting or sending sexual messages",
+    "3": "Photos or video depicting real world child sexual abuse"
+}
+
+
 
 class Report:
     START_KEYWORD = "report"
@@ -102,31 +125,50 @@ class Report:
             # Here we've found the message - it's up to you to decide what to do next!
             self.state = State.MESSAGE_IDENTIFIED
             return ["I found this message:", "```" + message.author.name + ": " + message.content + "```", \
-                    "Please select a category of abuse (enter number): \n(1) Spam/Fraud\n (2) Offensive Content\n (3) Bullying/Harassment\n (4) Violent/Dangerous"]
+                    "Please select a category of abuse (enter number): \n (1) Spam or Fraud\n (2) Offensive Content\n (3) Bullying or Harassment\n (4) Violent/Dangerous\n (5) Harmful Misinformation\n (6) Something Else"]
         
         
         if self.state == State.MESSAGE_IDENTIFIED:
             if re.search('1', message.content):
-                self.data['abuse_type'] = "Spam/Fraud"
+                self.data['abuse_type'] = "Spam or Fraud"
                 self.state = State.ADDITIONAL_INFO
                 return ["Is there anything other information you would like to add? If yes, please provide it now. If not, say `no`."]
             if re.search('2', message.content):
                 self.data['abuse_type'] = "Offensive Content"
                 self.state = State.OFFENSIVE
                 reply ="Please select type of offensive content: \n"
-                reply += '(1) Dehumanizing/derogatory remarks \n (2)  Sexual Content \n (3) Violence \n (4) Hate Speech \n (5) Animal abuse/torture'
+                reply += '(1) Animal abuse or torture \n(2) Sexual Content \n(3) Violence \n(4) Hate Speech \n'
                 return [reply]
             if re.search('3', message.content):
-                self.data['abuse_type'] = "Bullying/Harassment"
-                self.state = State.HARRASMENT
-                reply ="Please select type of harrasment: \n"
-                reply += '(1) sexual harrasment \n (2) targeted harrasment against protected class \n (3) repeated bullying'
+                self.data['abuse_type'] = "Bullying or Harassment"
+                self.state = State.HARASSMENT  
+                reply ="Please select type of harassment: \n"
+                reply += '(1) Promoting hate based on identity or vulnerability \n (2) Celebrating or glorifying acts of violence \n (3) Using rude, vulgar or offensive language \n (4) Bullying \n (5) Sexual harassment'
                 return [reply]
             if re.search('4', message.content):
                 self.data['abuse_type'] = "Violent/Dangerous"
                 self.state = State.DANGER
                 return ["Please specify what type of danger/violence you are reporting: \n(1) threats to safety\n(2) Encouragement of self-harm or suicideal ideation"]
-        
+
+            if re.search('5', message.content):
+                self.data['abuse_type'] = "Harmful Misinformation"
+                self.state = State.MISINFORMATION
+                reply = "Please select the type of harmful misinformation: \n"
+                reply += "(1) Spreading fake news or harmful conspiracy theories\n"
+                reply += "(2) Impersonation\n"
+                return [reply]
+
+            if re.search('6', message.content):
+                self.data['abuse_type'] = "Something Else"
+                self.state = State.SOMETHING_ELSE
+                reply = "Please select one of the following options: \n"
+                reply += "(1) Mentions self harm or suicide\n"
+                reply += "(2) Selling drugs or other illegal goods or services\n"
+                reply += "(3) Exposing private identifying information\n"
+                reply += "(4) Other"
+                return [reply]
+
+
         if self.state == State.ADDITIONAL_INFO:
             self.state = State.FINAL_ACTIONS
             if message.content != "no":
@@ -134,22 +176,28 @@ class Report:
             return ["If you have any suggestions on what action should be taken, please give your input: \n (1) Delete Message \n (2) Warn User \n (3) Ban User"]
         
         if self.state == State.OFFENSIVE:
-            if not re.search('5', message.content):
+            if not re.search('1|2', message.content):
                 self.state = State.ADDITIONAL_INFO
                 self.data['offensive_type'] = offense.get(message.content, message.content)
                 return ["Is there anything other information you would like to add? If yes, please provide it now. If not, say `no`."]
+            elif re.search('2', message.content):
+                self.state = State.SEXUAL_CONTENT_SUBTYPE
+                reply = "Please select type of sexual content: \n"
+                reply += "(1) Unwanted adult sexual images \n"
+                reply += "(2) Sexual content or behavior involving a minor"
+                return [reply]
             else:
                 self.state = State.ANIMAL_ABUSE
-                return ["Please specify what type of animal abuse you are reporting: \n(1) Poor Living Conditions\n (2) Physical Torture/Violence\n (3) Threaten to Torture/Commit Violence"]
+                return ["Please specify what type of animal abuse you are reporting: \n(1) Poor Living Conditions\n(2) Physical Torture or Violence\n(3) Threaten to Torture or Commit Violence Towards Animals"]
 
         if self.state == State.ANIMAL_ABUSE:
             self.state = State.ADDITIONAL_INFO
             self.data['animal_abuse_type'] = animal_abuse.get(message.content, message.content)
             return ["Is there anything other information you would like to add? If yes, please provide it now. If not, say `no`."]
 
-        if self.state == State.HARRASMENT:
+        if self.state == State.HARASSMENT:
             self.state = State.TARGET
-            self.data['harrassment_type'] = harrassment.get(message.content, message.content)
+            self.data['harassment_type'] = harassment.get(message.content, message.content)
             return ["Is this abuse against you or someone else: \n (1) Me \n (2) Someone else"]
         
         if self.state == State.TARGET:
@@ -172,6 +220,40 @@ class Report:
             self.state = State.ADDITIONAL_INFO
             return ["Is there anything other information you would like to add? If yes, please provide it now. If not, say `no`."]
         
+        if self.state == State.MISINFORMATION:
+            if re.search('1', message.content) or re.search('2', message.content):
+                self.data['misinformation_type'] = misinformation.get(message.content, message.content)
+                self.state = State.ADDITIONAL_INFO
+                return ["Is there anything other information you would like to add? If yes, please provide it now. If not, say `no`."]
+         
+        if self.state == State.SOMETHING_ELSE:
+            if re.search('1', message.content):
+                self.data['something_else_type'] = "Mentions self harm or suicide"
+                self.state = State.ADDITIONAL_INFO
+                return ["Is there anything other information you would like to add? If yes, please provide it now. If not, say `no`."]
+            elif re.search('2', message.content):
+                self.data['something_else_type'] = "Selling drugs or other illegal goods or services"
+                self.state = State.ADDITIONAL_INFO
+                return ["Is there anything other information you would like to add? If yes, please provide it now. If not, say `no`."]
+            elif re.search('3', message.content):
+                self.data['something_else_type'] = "Exposing private identifying information"
+                self.state = State.PRIVATE_INFO
+                return ["What information was posted without your consent?"]
+            elif re.search('4', message.content):
+                self.data['something_else_type'] = "Other"
+                self.state = State.OTHER_DESCRIPTION
+                return ["Please specify what you want to report."]
+       
+        if self.state == State.PRIVATE_INFO:
+            self.state = State.ADDITIONAL_INFO
+            self.data['private_info'] = message.content
+            return ["Is there anything other information you would like to add? If yes, please provide it now. If not, say `no`."]
+        ...
+        if self.state == State.OTHER_DESCRIPTION:
+            self.state = State.ADDITIONAL_INFO
+            self.data['other_description'] = message.content
+            return ["Is there anything other information you would like to add? If yes, please provide it now. If not, say `no`."]
+        ...
         if self.state == State.FINAL_ACTIONS:
             self.state = State.REPORT_COMPLETE
             self.data['action'] = suggested_actions.get(message.content, message.content)
@@ -181,6 +263,39 @@ class Report:
             self.data['channel'] = self.channel.name
             await self.mod_channel.send(f"{self.data}")
             return ["Your report has been submitted. Thank you for your help!"]
+
+        
+        if self.state == State.SEXUAL_CONTENT_SUBTYPE:
+            if re.search('1', message.content):
+                self.state = State.ADDITIONAL_INFO
+                self.data['offensive_type'] = "Unwanted adult sexual images"
+                return ["Is there anything other information you would like to add? If yes, please provide it now. If not, say `no`."]
+            elif re.search('2', message.content):
+                self.state = State.MINOR_SEXUAL_BEHAVIOR
+                reply = "Please select the type of sexual content involving a minor: \n"
+                reply += "(1) This person is sending inappropriate sexual messages or discussing minors sexually \n"
+                reply += "(2) A minor is posting or sending sexual messages \n"
+                reply += "(3) Photos or video depicting real world child sexual abuse"
+                return [reply]
+
+        if self.state == State.MINOR_SEXUAL_BEHAVIOR:
+            if re.search('1', message.content):
+                self.state = State.ADDITIONAL_INFO
+                self.data['offensive_type'] = "This person is sending inappropriate sexual messages or discussing minors sexually"
+                return ["Is there anything other information you would like to add? If yes, please provide it now. If not, say `no`."]
+            elif re.search('2', message.content):
+                self.state = State.ADDITIONAL_INFO
+                self.data['offensive_type'] = "A minor is posting or sending sexual messages"
+                return ["Is there anything other information you would like to add? If yes, please provide it now. If not, say `no`."]
+            elif re.search('3', message.content):
+                self.state = State.ADDITIONAL_INFO
+                self.data['offensive_type'] = "Photos or video depicting real world child sexual abuse"
+                return ["Is there anything other information you would like to add? If yes, please provide it now. If not, say `no`."]
+
+
+
+
+        
 
         return ["error try again"]
 
