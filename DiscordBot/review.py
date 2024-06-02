@@ -105,9 +105,10 @@ class Review:
             decision = message.content
             if decision in final_actions_messages:
                 # Send a dm to the reporting user to let them know the decision
-                reporting_user_id = self.review_data["reporter_id"]
-                reporting_user = await self.client.fetch_user(reporting_user_id)
-                await reporting_user.send(final_actions_messages[decision])
+                if "reporter_id" in self.review_data:
+                    reporting_user_id = self.review_data["reporter_id"]
+                    reporting_user = await self.client.fetch_user(reporting_user_id)
+                    await reporting_user.send(final_actions_messages[decision])
 
                 # Send a dm to the user who posted the message to let them know the decision
                 reported_user_id = self.review_data["authorId"]
@@ -118,7 +119,7 @@ class Review:
                     await reported_user.send("Your message violates our platform policies. You have been suspended.")
                 elif decision == "3":
                     await reported_user.send("Your message violates our platform policies. You have been banned.")
-                print(reporting_user, reporting_user_id, decision)
+                # print(reporting_user, reporting_user_id, decision)
 
                 # Update the decision in the database
                 data = supabase.table('reports').update({'decision': final_actions_messages[decision]}).eq('id', self.review_data["report_id"]).execute().data
@@ -133,9 +134,10 @@ class Review:
             decision = message.content
             if decision in final_actions_messages:
                 # Send a dm to the reporting user to let them know the decision
-                reporting_user_id = self.review_data["reporter_id"]
-                reporting_user = await self.client.fetch_user(reporting_user_id)
-                await reporting_user.send(final_actions_messages[decision])
+                if "reporter_id" in self.review_data:
+                    reporting_user_id = self.review_data["reporter_id"]
+                    reporting_user = await self.client.fetch_user(reporting_user_id)
+                    await reporting_user.send(final_actions_messages[decision])
 
                 # Send a dm to the user who posted the message to let them know the decision
                 reported_user_id = self.review_data["authorId"]
@@ -146,7 +148,7 @@ class Review:
                     await reported_user.send("Your message violates our platform policies. You have been suspended.")
                 elif decision == "3":
                     await reported_user.send("Your message violates our platform policies. You have been banned.")
-                print(reporting_user, reporting_user_id, decision)
+                # print(reporting_user, reporting_user_id, decision)
 
                 # Update the decision in the database
                 data = supabase.table('reports').update({'decision': final_actions_messages[decision]}).eq('id', self.review_data["report_id"]).execute().data

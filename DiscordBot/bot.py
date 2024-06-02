@@ -160,10 +160,6 @@ class ModBot(discord.Client):
             # Include the id of the report in the db
             data['report_id'] = report_id
 
-            # Check how many reports this user has made and include that for moderator reference
-            user_reports = supabase.table('reports').select('reporter_id').eq('reporter_id', data["reporter_id"]).execute().data
-            data['report_count'] = len(user_reports)
-
             # Check how many times the author has been warned
             # Query the database for authorId and decision = warning
             warnings = supabase.table('reports').select('authorId').eq('authorId', data["authorId"]).eq('decision', 'Your report has been reviewed. The message has been deleted and the user has been warned.').execute().data
