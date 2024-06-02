@@ -10,6 +10,7 @@ import requests
 from report import Report
 from review import Review
 import pdb
+from openai import OpenAI
 
 # Set up logging to the console
 logger = logging.getLogger('discord')
@@ -29,6 +30,8 @@ logger.addHandler(handler)
 
 # Load the discord token from environment variable
 discord_token = os.getenv('DISCORD_TOKEN')
+openai_key = os.getenv('OPENAI_KEY')
+openai_client = OpenAI(api_key=openai_key)
 
 class ModBot(discord.Client):
     def __init__(self):
@@ -137,7 +140,8 @@ class ModBot(discord.Client):
         # Forward the message to the mod channel
         mod_channel = self.mod_channels[message.guild.id]
         await mod_channel.send(f'Forwarded message:\n{message.author.name}: "{message.content}"')
-        scores = self.eval_text(message.content)
+        # WZHAI: Changed from message.content to message to include the images
+        scores = self.eval_text(message)
         await mod_channel.send(self.code_format(scores))
 
     def eval_text(self, message):
@@ -145,7 +149,45 @@ class ModBot(discord.Client):
         TODO: Once you know how you want to evaluate messages in your channel,
         insert your code here! This will primarily be used in Milestone 3.
         '''
-        return message
+        # Message content is the text of the message
+        # Message.attachments is a list of Attachment objects, each with id, filename and url
+
+        if message.content != "" and len(message.attachments) == 0:
+            # TODO: figure out how to handle text only cases
+            return message.content
+        elif len(message.attachments) > 0:
+            total_abuse = False
+            for attachment in message.attachments:
+                # TODO: better checks for image files
+                if attachment.filename.lower().endswith(('.png', '.jpg', '.jpeg', '.tiff', '.bmp', '.gif')):
+                    # Evaluate if the image is animal abuse
+                    response = openai_client.chat.completions.create(
+                        model="gpt-4o",
+                        messages=[
+                            {
+                            "role": "user",
+                            "content": [
+                                {"type": "text", "text": "This is an image from Tom and Jerry. We define 'proxy animal abuse' as any violent behavior (or behavior that would cause stress) towards any animals present in the image. Does this image contain 'proxy animal abuse'? Only answer with Yes or No."},
+                                {
+                                "type": "image_url",
+                                "image_url": {
+                                    "url": attachment.url,
+                                },
+                                },
+                            ],
+                            }
+                        ],
+                        max_tokens=300,
+                        )
+
+                    if response.choices[0].message.content.startswith("Yes"):
+                        total_abuse = True
+            if total_abuse:
+                return "This message contains animal abuse."
+            else:
+                return "This message does not contain animal abuse."
+
+        return message.content
 
 
     def code_format(self, text):
