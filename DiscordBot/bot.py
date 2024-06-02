@@ -11,6 +11,7 @@ from report import Report
 from review import Review
 import pdb
 from openai import OpenAI
+from db import supabase
 
 # Set up logging to the console
 logger = logging.getLogger('discord')
@@ -142,7 +143,32 @@ class ModBot(discord.Client):
         await mod_channel.send(f'Forwarded message:\n{message.author.name}: "{message.content}"')
         # WZHAI: Changed from message.content to message to include the images
         scores = self.eval_text(message)
-        await mod_channel.send(self.code_format(scores))
+        if scores == "This message contains animal abuse.":
+            data = {
+                "authorId": message.author.id,
+                "authorUserName": message.author.name,
+                "reported_message_link": message.jump_url,
+                "abuse_type": "Offensive Content",
+                "reporter_name": "ModBot",
+                "channel": message.channel.name,
+            }
+
+            # Insert the report into the database
+            d = supabase.table('reports').insert({key: value for key, value in data.items()}).execute().data
+            report_id = d[0]['id']
+
+            # Include the id of the report in the db
+            data['report_id'] = report_id
+
+            # Check how many reports this user has made and include that for moderator reference
+            user_reports = supabase.table('reports').select('reporter_id').eq('reporter_id', data["reporter_id"]).execute().data
+            data['report_count'] = len(user_reports)
+
+            # Check how many times the author has been warned
+            # Query the database for authorId and decision = warning
+            warnings = supabase.table('reports').select('authorId').eq('authorId', data["authorId"]).eq('decision', 'Your report has been reviewed. The message has been deleted and the user has been warned.').execute().data
+            data["warning_count"] = len(warnings)
+            await mod_channel.send(f"{data}")
 
     def eval_text(self, message):
         ''''
