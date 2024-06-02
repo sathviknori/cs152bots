@@ -1,6 +1,7 @@
 from enum import Enum, auto
 import discord
 import re
+from bot import supabase
 
 class State(Enum):
     REPORT_START = auto()
@@ -124,6 +125,8 @@ class Report:
 
             # Here we've found the message - it's up to you to decide what to do next!
             self.state = State.MESSAGE_IDENTIFIED
+            self.data['reporter_id'] = message.author.id
+            self.data['reporter_name'] = message.author.name
             return ["I found this message:", "```" + message.author.name + ": " + message.content + "```", \
                     "Please select a category of abuse (enter number): \n (1) Spam or Fraud\n (2) Offensive Content\n (3) Bullying or Harassment\n (4) Violent/Dangerous\n (5) Harmful Misinformation\n (6) Something Else"]
         
@@ -261,6 +264,23 @@ class Report:
             self.data['authorId'] = message.author.id
             self.data['authorUserName'] = message.author.name
             self.data['channel'] = self.channel.name
+
+            # Insert the report into the database
+            data, count = supabase.table('reports').insert({key: value for key, value in self.data.items()}).execute()
+            report_id = data[0]['id']
+
+            # Include the id of the report in the db
+            self.data['report_id'] = report_id
+
+            # Check how many reports this user has made and include that for moderator reference
+            user_reports = supabase.table('reports').select('reporter_id').eq('reporter_id', self.data["reporter_id"]).execute()
+            self.data['report_count'] = len(user_reports)
+
+            # Check how many times the author has been warned
+            # Query the database for authorId and decision = warning
+            warnings = supabase.table('reports').select('authorId').eq('authorId', self.data["authorId"]).eq('decision', 'Your report has been reviewed. The message has been deleted and the user has been warned.').execute()
+            self.data["warning_count"] = len(warnings)
+
             await self.mod_channel.send(f"{self.data}")
             return ["Your report has been submitted. Thank you for your help!"]
 

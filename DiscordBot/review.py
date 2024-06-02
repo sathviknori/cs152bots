@@ -2,6 +2,7 @@ from enum import Enum, auto
 import discord
 import re
 import ast
+from bot import supabase
 
 class State(Enum):
     REVIEW_START = auto()
@@ -14,7 +15,12 @@ class State(Enum):
     ADVERSARIAL_REPORTING = auto()
     COORDINATED_HARASSMENT = auto()
 
-    
+final_actions_messages = {
+    "1": "Your report has been reviewed. The message has been deleted and the user has been warned.",
+    "2": "Your report has been reviewed. The message has been deleted and the user has been suspended.",
+    "3": "Your report has been reviewed. The message has been deleted and the user has been banned.",
+    "4": "Your report has been reviewed. Unfortunately, no action has been taken. We appreciate your vigilance and suggest you block the user if you feel unsafe. If you have any further concerns, please let us know."
+}
 
 class Review:
     START_KEYWORD = "review"
@@ -113,19 +119,16 @@ class Review:
         if self.state == State.FINAL_ACTIONS:
             print("TAKING FINAL ACTIONS")
             decision = message.content
-            if decision in ["1", "2", "3", "4"]:
+            if decision in final_actions_messages:
                 # Send a dm to the reporting user to let them know the decision
                 reporting_user_id = self.review_data["authorId"]
                 reporting_user = await self.client.fetch_user(reporting_user_id)
-                print(reporting_user, reporting_user_id, message.content)
-                if message.content == "1":
-                    await reporting_user.send("Your report has been reviewed. The message has been deleted and the user has been warned.")
-                elif message.content == "2":
-                    await reporting_user.send("Your report has been reviewed. The message has been deleted and the user has been suspended.")
-                elif message.content == "3":
-                    await reporting_user.send("Your report has been reviewed. The message has been deleted and the user has been banned.")
-                elif message.content == "4":
-                    await reporting_user.send("Your report has been reviewed. Unfortunately, no action has been taken. We appreciate your vigilance and suggest you block the user if you feel unsafe. If you have any further concerns, please let us know.")
+                print(reporting_user, reporting_user_id, decision)
+                await reporting_user.send(final_actions_messages[decision])
+
+                # Update the decision in the database
+                data, count = supabase.table('countries').update({'decision': final_actions_messages[decision]}).eq('id', self.review_data["id"]).execute()
+
                 self.state = State.REVIEW_COMPLETE
                 return ["Review complete."]
             else:
