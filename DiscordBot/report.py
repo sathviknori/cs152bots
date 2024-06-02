@@ -1,7 +1,7 @@
 from enum import Enum, auto
 import discord
 import re
-from bot import supabase
+from db import supabase
 
 class State(Enum):
     REPORT_START = auto()
@@ -84,6 +84,7 @@ class Report:
         self.data = {}
         self.mod_channel = None
         self.channel = None
+        self.reported_message = None
     
     async def handle_message(self, message, mod_channels):
         '''
@@ -119,7 +120,7 @@ class Report:
             if not channel:
                 return ["It seems this channel was deleted or never existed. Please try again or say `cancel` to cancel."]
             try:
-                message = await channel.fetch_message(int(m.group(3)))
+                self.reported_message = await channel.fetch_message(int(m.group(3)))
             except discord.errors.NotFound:
                 return ["It seems this message was deleted or never existed. Please try again or say `cancel` to cancel."]
 
@@ -127,7 +128,7 @@ class Report:
             self.state = State.MESSAGE_IDENTIFIED
             self.data['reporter_id'] = message.author.id
             self.data['reporter_name'] = message.author.name
-            return ["I found this message:", "```" + message.author.name + ": " + message.content + "```", \
+            return ["I found this message:", "```" + self.reported_message.author.name + ": " + self.reported_message.content + "```", \
                     "Please select a category of abuse (enter number): \n (1) Spam or Fraud\n (2) Offensive Content\n (3) Bullying or Harassment\n (4) Violent/Dangerous\n (5) Harmful Misinformation\n (6) Something Else"]
         
         
@@ -261,24 +262,24 @@ class Report:
             self.state = State.REPORT_COMPLETE
             self.data['action'] = suggested_actions.get(message.content, message.content)
             print('Report Data:', self.data)
-            self.data['authorId'] = message.author.id
-            self.data['authorUserName'] = message.author.name
+            self.data['authorId'] = self.reported_message.author.id
+            self.data['authorUserName'] = self.reported_message.author.name
             self.data['channel'] = self.channel.name
 
             # Insert the report into the database
-            data, count = supabase.table('reports').insert({key: value for key, value in self.data.items()}).execute()
-            report_id = data[0]['id']
+            d = supabase.table('reports').insert({key: value for key, value in self.data.items()}).execute().data
+            report_id = d[0]['id']
 
             # Include the id of the report in the db
             self.data['report_id'] = report_id
 
             # Check how many reports this user has made and include that for moderator reference
-            user_reports = supabase.table('reports').select('reporter_id').eq('reporter_id', self.data["reporter_id"]).execute()
+            user_reports = supabase.table('reports').select('reporter_id').eq('reporter_id', self.data["reporter_id"]).execute().data
             self.data['report_count'] = len(user_reports)
 
             # Check how many times the author has been warned
             # Query the database for authorId and decision = warning
-            warnings = supabase.table('reports').select('authorId').eq('authorId', self.data["authorId"]).eq('decision', 'Your report has been reviewed. The message has been deleted and the user has been warned.').execute()
+            warnings = supabase.table('reports').select('authorId').eq('authorId', self.data["authorId"]).eq('decision', 'Your report has been reviewed. The message has been deleted and the user has been warned.').execute().data
             self.data["warning_count"] = len(warnings)
 
             await self.mod_channel.send(f"{self.data}")

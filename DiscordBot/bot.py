@@ -19,15 +19,6 @@ handler = logging.FileHandler(filename='discord.log', encoding='utf-8', mode='w'
 handler.setFormatter(logging.Formatter('%(asctime)s:%(levelname)s:%(name)s: %(message)s'))
 logger.addHandler(handler)
 
-# Initialize supabase db
-
-import os
-from supabase import create_client, Client
-
-url: str = os.environ.get("SUPABASE_URL")
-key: str = os.environ.get("SUPABASE_KEY")
-supabase: Client = create_client(url, key)
-
 # # There should be a file called 'tokens.json' inside the same folder as this file
 # token_path = 'tokens.json'
 # if not os.path.isfile(token_path):
