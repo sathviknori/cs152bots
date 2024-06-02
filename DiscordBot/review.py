@@ -127,7 +127,7 @@ class Review:
                 await reporting_user.send(final_actions_messages[decision])
 
                 # Update the decision in the database
-                data, count = supabase.table('countries').update({'decision': final_actions_messages[decision]}).eq('id', self.review_data["id"]).execute()
+                data, count = supabase.table('countries').update({'decision': final_actions_messages[decision]}).eq('id', self.review_data["report_id"]).execute()
 
                 self.state = State.REVIEW_COMPLETE
                 return ["Review complete."]
